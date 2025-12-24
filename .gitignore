@@ -1,3 +1,5 @@
 .idea/
 .venv/
 .env
+/suggestions.db
+/test_suggestions.db
