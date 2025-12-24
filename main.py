@@ -126,6 +126,12 @@ async def init_game_db():
                 admin_role_id BIGINT
             );
         """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS game_admins
+            (
+                user_id BIGINT PRIMARY KEY
+            );
+        """)
 
 
 # ---------------- SUGGESTIONS DB INIT (SQLite) ----------------
@@ -196,6 +202,14 @@ def init_suggestions_db():
 # ---------------- GAME HELPERS ----------------
 def is_super_admin(user_id: int) -> bool:
     return user_id in SUPER_ADMINS
+
+
+async def is_game_admin(user_id: int) -> bool:
+    if is_super_admin(user_id):
+        return True
+    async with POOL.acquire() as conn:
+        result = await conn.fetchrow("SELECT 1 FROM game_admins WHERE user_id = $1", user_id)
+        return result is not None
 
 
 def move_from_dict(d: Dict[str, Any]) -> Move:
@@ -638,6 +652,70 @@ async def admin_set_guild_role(interaction: discord.Interaction, role_id: str):
         )
         await interaction.response.send_message(
             f"Guild admin role id set to {role_id}.", ephemeral=True)
+
+
+@bot.tree.command(name="add-game-admin", description="[GAME] Add a global game admin")
+@app_commands.describe(user="The user to promote to game admin")
+async def add_game_admin(interaction: discord.Interaction, user: discord.User):
+    # Only server admins and existing game admins (or super admins) can use this
+    is_server_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
+    
+    if not is_server_admin and not await is_game_admin(interaction.user.id):
+        await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
+        return
+
+    async with POOL.acquire() as conn:
+        await conn.execute("INSERT INTO game_admins (user_id) VALUES ($1) ON CONFLICT DO NOTHING", user.id)
+    
+    await interaction.response.send_message(f"✅ {user.display_name} is now a game admin.", ephemeral=True)
+
+
+@bot.tree.command(name="edit-character", description="[GAME ADMIN] Edit an existing character")
+async def edit_character(interaction: discord.Interaction):
+    if not await is_game_admin(interaction.user.id):
+        await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
+        return
+    await interaction.response.send_message("Blank command for edit-character. Not yet implemented.", ephemeral=True)
+
+
+@bot.tree.command(name="edit-map", description="[GAME ADMIN] Edit an existing map")
+async def edit_map(interaction: discord.Interaction):
+    if not await is_game_admin(interaction.user.id):
+        await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
+        return
+    await interaction.response.send_message("Blank command for edit-map. Not yet implemented.", ephemeral=True)
+
+
+@bot.tree.command(name="remove-character", description="[GAME ADMIN] Remove a character")
+async def remove_character(interaction: discord.Interaction):
+    if not await is_game_admin(interaction.user.id):
+        await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
+        return
+    await interaction.response.send_message("Blank command for remove-character. Not yet implemented.", ephemeral=True)
+
+
+@bot.tree.command(name="remove-map", description="[GAME ADMIN] Remove a map")
+async def remove_map(interaction: discord.Interaction):
+    if not await is_game_admin(interaction.user.id):
+        await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
+        return
+    await interaction.response.send_message("Blank command for remove-map. Not yet implemented.", ephemeral=True)
+
+
+@bot.tree.command(name="restrict-character-access", description="[GAME ADMIN] Restrict access to a character")
+async def restrict_character_access(interaction: discord.Interaction):
+    if not await is_game_admin(interaction.user.id):
+        await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
+        return
+    await interaction.response.send_message("Blank command for restrict-character-access. Not yet implemented.", ephemeral=True)
+
+
+@bot.tree.command(name="restrict-map-access", description="[GAME ADMIN] Restrict access to a map")
+async def restrict_map_access(interaction: discord.Interaction):
+    if not await is_game_admin(interaction.user.id):
+        await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
+        return
+    await interaction.response.send_message("Blank command for restrict-map-access. Not yet implemented.", ephemeral=True)
 
 
 # ---------------- SUGGESTIONS COMMANDS ----------------
